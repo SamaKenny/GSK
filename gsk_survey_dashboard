@@ -3,23 +3,21 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>GSK Survey Dashboard — Donut (Fixed)</title>
+  <title>GSK Survey Dashboard — Donut (Readable)</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <style>
     :root{
-      --bg:#0f1115; --card:#171a21; --line:#2a2f3a; --text:#e5e7eb; --muted:#9aa3b2; --accent:#ef4444; --accent-600:#dc2626;
+      --bg:#0f1115; --card:#171a21; --line:#2a2f3a; --text:#f9fafb; --muted:#c7cdd6; --accent:#ef4444;
     }
     html,body{height:100%}
     body{ background: var(--bg); color: var(--text); font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial; }
     .card{ background: var(--card); border: 1px solid var(--line); border-radius: 14px; }
     .btn{ background: var(--accent); color: #fff; font-weight: 600; padding: .55rem .9rem; border-radius: .7rem; }
-    .btn:hover{ background: var(--accent-600); }
     .muted{ color: var(--muted) }
-    th{ position: sticky; top:0; background: #1b1f27; }
-    /* KEY FIX: constrain chart container height and prevent canvas expansion loops */
-    #chartWrap{ position: relative; height: 340px; width: 100%; }
+    #chartWrap{ position: relative; height: 360px; width: 100%; }
     #chartWrap canvas{ max-width: 100%; max-height: 100%; }
+    th{ position: sticky; top:0; background: #1b1f27; }
   </style>
 </head>
 <body>
@@ -27,7 +25,7 @@
     <header class="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
       <div>
         <h1 class="text-2xl font-semibold tracking-tight">GSK Survey Dashboard</h1>
-        <p class="text-sm muted">Neutral theme, auto-loaded data. Donut chart with fixed container.</p>
+        <p class="text-sm muted">Auto-loads from Google Sheets • Donut chart • High-contrast labels</p>
       </div>
       <div class="flex items-center gap-2">
         <button id="exportAggBtn" class="btn">Export CSV</button>
@@ -108,7 +106,7 @@
   </div>
 
   <script>
-    // Auto-load from this Google Sheet
+    // Auto-load from this Google Sheet (baked in)
     const SHEET_URL = "https://docs.google.com/spreadsheets/d/1Fl7OKuWzVFrHfrY9yoWLoMC1Q0ZR4cR0hHndfcG6qZg/edit?usp=sharing";
 
     // ---------- State ----------
@@ -306,13 +304,25 @@
         data: { labels, datasets: [{ label: 'Votes', data }] },
         options: {
           responsive: true,
-          maintainAspectRatio: false,   // respect the fixed #chartWrap height
+          maintainAspectRatio: false,
           cutout: '60%',
-          animation: { duration: 300 },
-          resizeDelay: 120,             // throttle resize to avoid loops
+          animation: { duration: 250 },
+          resizeDelay: 120,
           plugins: {
-            legend: { position: 'bottom', labels: { color: '#c7cdd6', boxWidth: 14 } },
-            tooltip: { enabled: true }
+            legend: {
+              position: 'bottom',
+              labels: { color: '#ffffff', font: { size: 14, weight: 'bold' }, boxWidth: 14 }
+            },
+            tooltip: {
+              enabled: true,
+              backgroundColor: '#f9fafb',
+              titleColor: '#111827',
+              bodyColor: '#111827',
+              borderColor: '#e5e7eb',
+              borderWidth: 1,
+              titleFont: { size: 14, weight: 'bold' },
+              bodyFont: { size: 13 }
+            }
           }
         }
       });
