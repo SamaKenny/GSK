@@ -301,31 +301,23 @@
       const data = grouped.slice(0, topN).map(g => g.count);
       const ctx = document.getElementById('donutChart');
       if(chartInstance){ chartInstance.destroy(); }
-     chartInstance = new Chart(ctx, {
-  type: 'doughnut',
-  data: { labels, datasets: [{ label: 'Votes', data }] },
-  options: {
-    responsive: true,
-    maintainAspectRatio: false,
-    cutout: '60%',
-    plugins: {
-      legend: {
-        position: 'bottom',
-        labels: {
-          color: '#ffffff',   // bright white legend text
-          font: { size: 14, weight: 'bold' }
+      chartInstance = new Chart(ctx, {
+        type: 'doughnut',
+        data: { labels, datasets: [{ label: 'Votes', data }] },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,   // respect the fixed #chartWrap height
+          cutout: '60%',
+          animation: { duration: 300 },
+          resizeDelay: 120,             // throttle resize to avoid loops
+          plugins: {
+            legend: { position: 'bottom', labels: { color: '#c7cdd6', boxWidth: 14 } },
+            tooltip: { enabled: true }
+          }
         }
-      },
-      tooltip: {
-        bodyColor: '#111',   // dark text on light tooltip
-        backgroundColor: '#fef2f2', // light tooltip background
-        titleColor: '#111',
-        titleFont: { size: 14, weight: 'bold' },
-        bodyFont: { size: 13 }
-      }
+      });
     }
-  }
-});
+
     function currentOpts(){
       return {
         caseInsensitive: document.getElementById('caseInsensitive').checked,
