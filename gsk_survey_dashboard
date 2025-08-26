@@ -3,106 +3,412 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>GSK Survey Dashboard</title>
+  <title>GSK Survey Dashboard — Donut (Fixed)</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <style>
-    [data-fade] { opacity: 0; transform: translateY(6px); transition: opacity .35s, transform .35s; }
-    [data-fade].in { opacity: 1; transform: translateY(0); }
+    :root{
+      --bg:#0f1115; --card:#171a21; --line:#2a2f3a; --text:#e5e7eb; --muted:#9aa3b2; --accent:#ef4444; --accent-600:#dc2626;
+    }
+    html,body{height:100%}
+    body{ background: var(--bg); color: var(--text); font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial; }
+    .card{ background: var(--card); border: 1px solid var(--line); border-radius: 14px; }
+    .btn{ background: var(--accent); color: #fff; font-weight: 600; padding: .55rem .9rem; border-radius: .7rem; }
+    .btn:hover{ background: var(--accent-600); }
+    .muted{ color: var(--muted) }
+    th{ position: sticky; top:0; background: #1b1f27; }
+    /* KEY FIX: constrain chart container height and prevent canvas expansion loops */
+    #chartWrap{ position: relative; height: 340px; width: 100%; }
+    #chartWrap canvas{ max-width: 100%; max-height: 100%; }
   </style>
 </head>
-<body class="bg-slate-50 text-slate-800">
-  <div class="max-w-7xl mx-auto p-6 space-y-6">
-    <header class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between" data-fade>
+<body>
+  <div class="max-w-6xl mx-auto p-6 space-y-6">
+    <header class="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
       <div>
-        <h1 class="text-2xl font-bold tracking-tight">GSK Survey Dashboard</h1>
-        <p class="text-sm text-slate-600">Live summary of name suggestions for <span class="font-semibold">GSK</span> (Spot Killers).</p>
+        <h1 class="text-2xl font-semibold tracking-tight">GSK Survey Dashboard</h1>
+        <p class="text-sm muted">Neutral theme, auto-loaded data. Donut chart with fixed container.</p>
       </div>
-      <div class="flex flex-wrap gap-2">
-        <a id="sourceLink" href="#" target="_blank" class="text-xs px-3 py-2 rounded-xl bg-white shadow border border-slate-200 hover:bg-slate-50">Open Source Sheet</a>
-        <button id="exportAggBtn" class="text-xs px-3 py-2 rounded-xl bg-white shadow border border-slate-200 hover:bg-slate-50">Export Aggregated CSV</button>
+      <div class="flex items-center gap-2">
+        <button id="exportAggBtn" class="btn">Export CSV</button>
       </div>
     </header>
 
-    <section class="bg-white shadow-sm border border-slate-200 rounded-2xl p-4 sm:p-5 space-y-3" data-fade>
-      <div class="flex flex-col md:flex-row md:items-end gap-3">
-        <label class="flex-1">
-          <span class="block text-xs font-medium text-slate-600">Google Sheet URL or ID</span>
-          <input id="sheetInput" class="w-full mt-1 rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Paste Google Sheet URL or ID" />
-        </label>
-        <div class="flex gap-2">
-          <button id="loadBtn" class="px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700">Load</button>
-          <button id="loadSampleBtn" class="px-4 py-2 rounded-xl bg-slate-900 text-white text-sm font-medium hover:bg-black">Load Sample</button>
-        </div>
+    <!-- KPIs -->
+    <section class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div class="card p-4">
+        <p class="text-xs muted">Total Responses</p>
+        <p id="kpiTotal" class="text-2xl font-bold mt-1">0</p>
       </div>
-      <p class="text-[13px] text-slate-500">Tip: make sure your sheet is viewable to "Anyone with the link". When hosting on GitHub Pages, this file must end with <code>.html</code> so it displays in-browser instead of downloading.</p>
-    </section>
-
-    <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" data-fade>
-      <div class="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm">
-        <p class="text-xs text-slate-500">Total Submissions</p>
-        <p id="kpiTotal" class="text-2xl font-semibold mt-1">—</p>
+      <div class="card p-4">
+        <p class="text-xs muted">Unique Suggestions</p>
+        <p id="kpiUnique" class="text-2xl font-bold mt-1">0</p>
       </div>
-      <div class="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm">
-        <p class="text-xs text-slate-500">Unique (Canonical)</p>
-        <p id="kpiUnique" class="text-2xl font-semibold mt-1">—</p>
-      </div>
-      <div class="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm">
-        <p class="text-xs text-slate-500">Top Suggestion</p>
-        <p id="kpiTop" class="text-base font-semibold mt-1 truncate">—</p>
-      </div>
-      <div class="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm">
-        <p class="text-xs text-slate-500">Last Updated</p>
-        <p id="kpiUpdated" class="text-sm font-medium mt-1">—</p>
+      <div class="card p-4">
+        <p class="text-xs muted">Top Suggestion</p>
+        <p id="kpiTop" class="text-base font-medium mt-1 truncate">—</p>
       </div>
     </section>
 
-    <section class="grid grid-cols-1 lg:grid-cols-3 gap-4" data-fade>
-      <div class="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm lg:col-span-2">
+    <!-- Donut + Filters -->
+    <section class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div class="card p-4 lg:col-span-2">
         <div class="flex items-center justify-between mb-3">
           <h2 class="text-sm font-semibold">Top Suggestions</h2>
-          <div class="text-[12px] text-slate-500">Top 10 by canonical grouping</div>
+          <div class="flex items-center gap-3 text-sm muted">
+            <label for="topN">Top N</label>
+            <input id="topN" type="range" min="3" max="20" value="10" class="w-40">
+            <span id="topNLabel">10</span>
+          </div>
         </div>
-        <canvas id="barChart" height="120"></canvas>
+        <div id="chartWrap"><canvas id="donutChart" role="img" aria-label="Doughnut chart of top suggestions"></canvas></div>
       </div>
-      <div class="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm space-y-3">
+      <div class="card p-4 space-y-3">
         <h2 class="text-sm font-semibold">Filters</h2>
-        <label class="block">
-          <span class="block text-xs text-slate-600">Search (original or canonical)</span>
-          <input id="searchInput" class="w-full mt-1 rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="e.g., ghost, siege, killer" />
-        </label>
-        <label class="block">
-          <span class="block text-xs text-slate-600">Dedup Rules (applied to canonical)</span>
-          <textarea id="rulesInput" class="w-full mt-1 rounded-xl border border-slate-300 px-3 py-2 text-xs h-28 focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder='One rule per line, format: find => replace'></textarea>
-          <p class="mt-1 text-[11px] text-slate-500">These replacements run after basic normalization (lowercase, punctuation/extra spaces removed).</p>
-        </label>
-        <button id="applyRulesBtn" class="px-3 py-2 rounded-xl bg-emerald-600 text-white text-xs font-medium hover:bg-emerald-700">Apply Rules</button>
+        <input id="searchInput" class="w-full bg-[#0e1116] border border-[color:var(--line)] text-[color:var(--text)] rounded-md px-3 py-2" placeholder="Search… (original or canonical)">
+        <div class="grid grid-cols-2 gap-3">
+          <label class="inline-flex items-center gap-2 text-sm"><input id="caseInsensitive" type="checkbox" checked> <span>Case‑insensitive</span></label>
+          <label class="inline-flex items-center gap-2 text-sm"><input id="aggressiveNorm" type="checkbox" checked> <span>Normalize slang</span></label>
+        </div>
+        <div class="flex items-center gap-3 text-sm">
+          <label for="fuzzyThreshold">Fuzzy merge</label>
+          <input id="fuzzyThreshold" type="range" min="0" max="3" step="1" value="1" class="w-40">
+          <span id="fuzzyLabel" class="muted">1</span>
+        </div>
+        <details class="text-sm muted">
+          <summary>Custom dedup rules</summary>
+          <textarea id="rulesInput" class="w-full bg-[#0e1116] border border-[color:var(--line)] text-[color:var(--text)] rounded-md px-3 py-2 mt-2" rows="4" placeholder="One per line: find => replace"></textarea>
+          <button id="applyRulesBtn" class="btn mt-2" type="button">Apply</button>
+        </details>
       </div>
     </section>
 
-    <section class="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm" data-fade>
+    <!-- Table -->
+    <section class="card p-4">
       <div class="flex items-center justify-between mb-3">
         <h2 class="text-sm font-semibold">All Submissions</h2>
-        <div class="text-[12px] text-slate-500" id="tableMeta">—</div>
+        <div id="tableMeta" class="text-xs muted">—</div>
       </div>
-      <div class="overflow-x-auto">
+      <div class="overflow-x-auto rounded-md border border-[color:var(--line)]">
         <table class="min-w-full text-sm">
-          <thead class="bg-slate-100/60 text-slate-600">
-            <tr>
-              <th class="text-left py-2 px-3 font-medium">Timestamp</th>
-              <th class="text-left py-2 px-3 font-medium">Original Suggestion</th>
-              <th class="text-left py-2 px-3 font-medium">Canonical</th>
-              <th class="text-left py-2 px-3 font-medium">Group Count</th>
+          <thead class="text-left">
+            <tr class="text-xs muted">
+              <th class="py-2 px-3">Timestamp</th>
+              <th class="py-2 px-3">Original</th>
+              <th class="py-2 px-3">Canonical</th>
+              <th class="py-2 px-3">Count</th>
             </tr>
           </thead>
-          <tbody id="tableBody" class="divide-y divide-slate-100"></tbody>
+          <tbody id="tableBody" class="divide-y" style="--tw-divide-opacity:1; border-color: var(--line)"></tbody>
         </table>
       </div>
     </section>
+
+    <p id="statusMsg" class="text-sm muted"></p>
   </div>
 
   <script>
-    // Keep existing JS logic...
+    // Auto-load from this Google Sheet
+    const SHEET_URL = "https://docs.google.com/spreadsheets/d/1Fl7OKuWzVFrHfrY9yoWLoMC1Q0ZR4cR0hHndfcG6qZg/edit?usp=sharing";
+
+    // ---------- State ----------
+    const TZ = 'America/Costa_Rica';
+    let rawRows = [];
+    let grouped = [];
+    let chartInstance = null;
+
+    // ---------- Utils ----------
+    const fmtTime = (d) => new Intl.DateTimeFormat('en-US', {
+      timeZone: TZ, year:'numeric', month:'2-digit', day:'2-digit',
+      hour:'2-digit', minute:'2-digit', second:'2-digit'
+    }).format(d);
+
+    function setStatus(msg, ok=true){
+      const el = document.getElementById('statusMsg');
+      el.textContent = msg;
+      el.style.color = ok ? 'var(--muted)' : '#ff9aa2';
+    }
+
+    function extractSpreadsheetId(url){
+      if(/^[A-Za-z0-9-_]{20,}$/.test(url)) return url; // ID
+      const m = String(url||'').match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+      return m ? m[1] : null;
+    }
+    function extractGid(url){
+      const m = String(url||'').match(/[?&]gid=(\d+)/);
+      return m ? m[1] : null;
+    }
+    function buildGvizUrl(sheetUrl){
+      const id = extractSpreadsheetId(sheetUrl);
+      const gid = extractGid(sheetUrl);
+      if(!id) return null;
+      let url = `https://docs.google.com/spreadsheets/d/${id}/gviz/tq?tqx=out:json`;
+      if(gid) url += `&gid=${gid}`;
+      return url;
+    }
+
+    function parseGvizJSON(text){
+      const start = text.indexOf('{');
+      const end = text.lastIndexOf('}');
+      if(start === -1 || end === -1) throw new Error('Unexpected response');
+      const json = JSON.parse(text.slice(start, end+1));
+      const cols = json.table.cols.map(c => (c.label || c.id || '').trim());
+      const rows = json.table.rows.map(r => r.c.map(c => c ? (c.f ?? c.v) : ''));
+      return { cols, rows };
+    }
+
+    function detectColumns(cols){
+      let tsIdx = cols.findIndex(c => /timestamp/i.test(c));
+      let sugIdx = cols.findIndex(c => /(suggest|type)/i.test(c));
+      if(tsIdx === -1) tsIdx = 0;
+      if(sugIdx === -1) sugIdx = 1;
+      return { tsIdx, sugIdx };
+    }
+
+    function parseDate(value){
+      if(value == null) return null;
+      if(typeof value === 'string'){
+        const d = new Date(value);
+        if(!isNaN(d)) return d;
+        const m = value.match(/Date\(([^)]+)\)/);
+        if(m){
+          const parts = m[1].split(',').map(x => parseInt(x.trim(), 10) || 0);
+          return new Date(parts[0], parts[1], parts[2]||1, parts[3]||0, parts[4]||0, parts[5]||0);
+        }
+        return null;
+      }
+      if(typeof value === 'number'){ return new Date(value); }
+      return null;
+    }
+
+    function normalizeSuggestion(s, { caseInsensitive, aggressive }){
+      if(!s) return '';
+      let t = s.trim();
+      if(caseInsensitive) t = t.toLowerCase();
+      t = t.replace(/[^a-z0-9\s]/gi, ' ').replace(/\s+/g, ' ').trim();
+      if(aggressive){
+        t = t.replace(/\bkillas\b/g, 'killers')
+             .replace(/\bkilla\b/g, 'killer')
+             .replace(/\bghosts?\b/g, 'ghost')
+             .replace(/\bseige\b/g, 'siege');
+      }
+      return t;
+    }
+
+    function levenshtein(a,b){
+      const m=a.length, n=b.length;
+      if(m===0) return n; if(n===0) return m;
+      const dp = new Array(n+1);
+      for(let j=0;j<=n;j++) dp[j]=j;
+      for(let i=1;i<=m;i++){
+        let prev=dp[0]; dp[0]=i;
+        for(let j=1;j<=n;j++){
+          const tmp=dp[j];
+          dp[j]=Math.min(
+            dp[j]+1,
+            dp[j-1]+1,
+            prev + (a[i-1]===b[j-1]?0:1)
+          );
+          prev=tmp;
+        }
+      }
+      return dp[n];
+    }
+
+    function groupSuggestions(rows, opts, rules){
+      const freqByKey = new Map();
+      const displayForms = new Map();
+      const keys = [];
+
+      const compiledRules = (rules||[]).map(line => {
+        const m = line.split('=>');
+        if(m.length<2) return null;
+        const find = m[0].trim(); const repl = m[1].trim();
+        if(!find) return null;
+        try{ return [new RegExp(find, 'gi'), repl]; }catch{ return null; }
+      }).filter(Boolean);
+
+      function applyRules(s){
+        let out = s;
+        for(const [re, rep] of compiledRules){ out = out.replace(re, rep); }
+        return out;
+      }
+
+      function addToGroup(key, display){
+        freqByKey.set(key, (freqByKey.get(key)||0)+1);
+        if(!displayForms.has(key)) displayForms.set(key, new Map());
+        const m = displayForms.get(key);
+        m.set(display, (m.get(display)||0)+1);
+      }
+
+      function bestDisplayFor(key){
+        const m = displayForms.get(key);
+        let best = null, bestCount = -1;
+        for(const [d,c] of m.entries()){
+          if(c>bestCount || (c===bestCount && d<best)){ best = d; bestCount = c; }
+        }
+        return best || key;
+      }
+
+      for(const r of rows){
+        const display = (r.suggestion||'').trim();
+        let norm = normalizeSuggestion(display, opts);
+        norm = applyRules(norm);
+        if(!norm) continue;
+        let chosen = null;
+        for(const k of keys){
+          const d = levenshtein(norm, k);
+          if(d <= opts.fuzzy){ chosen = k; break; }
+        }
+        if(!chosen){ keys.push(norm); chosen = norm; }
+        addToGroup(chosen, display);
+      }
+
+      const groups = keys.map(k => ({ key: k, label: bestDisplayFor(k), count: freqByKey.get(k) || 0 }))
+                         .sort((a,b)=> b.count - a.count || a.label.localeCompare(b.label));
+      return groups;
+    }
+
+    function renderStats(){
+      document.getElementById('kpiTotal').textContent = rawRows.length.toString();
+      document.getElementById('kpiUnique').textContent = grouped.length.toString();
+      document.getElementById('kpiTop').textContent = grouped[0] ? `${grouped[0].label} (${grouped[0].count})` : '—';
+    }
+
+    function renderTable(filter=''){
+      const body = document.getElementById('tableBody');
+      body.innerHTML = '';
+      const needle = filter.trim().toLowerCase();
+      const mapCount = new Map(grouped.map(g=>[g.label, g.count]));
+      for(const r of rawRows){
+        const s = r.suggestion || '';
+        const canonical = findGroupLabel(s);
+        if(needle && !(s.toLowerCase().includes(needle) || canonical.toLowerCase().includes(needle))) continue;
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td class="py-2 px-3">${r.timestamp ? fmtTime(r.timestamp) : ''}</td>
+                        <td class="py-2 px-3">${s}</td>
+                        <td class="py-2 px-3">${canonical}</td>
+                        <td class="py-2 px-3">${mapCount.get(canonical) ?? ''}</td>`;
+        body.appendChild(tr);
+      }
+      document.getElementById('tableMeta').textContent = `${body.children.length} of ${rawRows.length} rows`;
+    }
+
+    function renderChart(){
+      const topN = parseInt(document.getElementById('topN').value,10) || 10;
+      document.getElementById('topNLabel').textContent = topN;
+      const labels = grouped.slice(0, topN).map(g => g.label);
+      const data = grouped.slice(0, topN).map(g => g.count);
+      const ctx = document.getElementById('donutChart');
+      if(chartInstance){ chartInstance.destroy(); }
+     chartInstance = new Chart(ctx, {
+  type: 'doughnut',
+  data: { labels, datasets: [{ label: 'Votes', data }] },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    cutout: '60%',
+    plugins: {
+      legend: {
+        position: 'bottom',
+        labels: {
+          color: '#ffffff',   // bright white legend text
+          font: { size: 14, weight: 'bold' }
+        }
+      },
+      tooltip: {
+        bodyColor: '#111',   // dark text on light tooltip
+        backgroundColor: '#fef2f2', // light tooltip background
+        titleColor: '#111',
+        titleFont: { size: 14, weight: 'bold' },
+        bodyFont: { size: 13 }
+      }
+    }
+  }
+});
+    function currentOpts(){
+      return {
+        caseInsensitive: document.getElementById('caseInsensitive').checked,
+        aggressive: document.getElementById('aggressiveNorm').checked,
+        fuzzy: parseInt(document.getElementById('fuzzyThreshold').value,10) || 0
+      };
+    }
+    function currentRules(){
+      const raw = document.getElementById('rulesInput').value || '';
+      return raw.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
+    }
+
+    function regroupAndRender(){
+      grouped = groupSuggestions(rawRows, currentOpts(), currentRules());
+      renderStats(); renderChart();
+      renderTable(document.getElementById('searchInput').value||'');
+    }
+
+    function findGroupLabel(original){
+      const norm = normalizeSuggestion(original, currentOpts());
+      let bestLabel = ''; let bestDist = Infinity;
+      for(const g of grouped){
+        const d = levenshtein(norm, g.key);
+        if(d < bestDist){ bestDist = d; bestLabel = g.label; }
+      }
+      return bestLabel || original;
+    }
+
+    async function loadFromSheet(sheetUrl){
+      const gvizUrl = buildGvizUrl(sheetUrl);
+      if(!gvizUrl){ setStatus('Invalid Google Sheet URL/ID.', false); return; }
+      setStatus('Loading data…');
+      try{
+        const res = await fetch(gvizUrl, { mode:'cors', credentials:'omit' });
+        if(!res.ok) throw new Error(`HTTP ${res.status}`);
+        const text = await res.text();
+        const { cols, rows } = parseGvizJSON(text);
+        const { tsIdx, sugIdx } = detectColumns(cols);
+        const parsed = [];
+        for(const r of rows){
+          const ts = parseDate(r[tsIdx]);
+          const suggestion = (r[sugIdx] ?? '').toString();
+          if(!suggestion) continue;
+          parsed.push({ timestamp: ts, suggestion });
+        }
+        rawRows = parsed.sort((a,b)=> (a.timestamp?.getTime()||0) - (b.timestamp?.getTime()||0));
+        regroupAndRender();
+        setStatus(`Loaded ${rawRows.length} responses.`);
+      }catch(err){
+        console.error(err);
+        setStatus('Could not load the sheet. Check sharing settings.', false);
+        rawRows = [
+          { timestamp: new Date('2025-08-26T12:57:37'), suggestion: 'Ghost Siege Killers' },
+          { timestamp: new Date('2025-08-26T12:59:15'), suggestion: 'Ghost Siege Killas' }
+        ];
+        regroupAndRender();
+      }
+    }
+
+    function downloadAggregatedCSV(){
+      const header = ['Group','Count'];
+      const rows = [header.join(',')];
+      for(const g of grouped){
+        rows.push(`"${g.label.replaceAll('"','""')}",${g.count}`);
+      }
+      const blob = new Blob([rows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href=url; a.download='gsk-aggregated.csv';
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    // ---------- Events ----------
+    document.getElementById('exportAggBtn').addEventListener('click', downloadAggregatedCSV);
+    document.getElementById('searchInput').addEventListener('input', (e)=> renderTable(e.target.value));
+    document.getElementById('topN').addEventListener('input', (e)=>{ document.getElementById('topNLabel').textContent = e.target.value; renderChart(); });
+    document.getElementById('fuzzyThreshold').addEventListener('input', (e)=>{ document.getElementById('fuzzyLabel').textContent = e.target.value; regroupAndRender(); });
+    document.getElementById('caseInsensitive').addEventListener('change', regroupAndRender);
+    document.getElementById('aggressiveNorm').addEventListener('change', regroupAndRender);
+    document.getElementById('applyRulesBtn').addEventListener('click', regroupAndRender);
+
+    // ---------- Init: auto-load ----------
+    window.addEventListener('DOMContentLoaded', ()=> loadFromSheet(SHEET_URL));
   </script>
 </body>
 </html>
