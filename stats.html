@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Match Leaderboards — Lite</title>
+<style>
+  :root {
+    --bg:#0b1220; --card:#0f1525; --muted:#9aa4b2; --text:#e5e7eb; --border:#1f2937; --accent:#38bdf8;
+  }
+  html, body {
+    background: var(--bg); color: var(--text); margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  }
+  .wrap { max-width: 900px; margin: 28px auto; padding: 0 14px; }
+  h1 { font-size: 22px; margin: 0 0 6px; }
+  .sub { color: var(--muted); margin: 0 0 16px; }
+  .grid { display: grid; gap: 10px; }
+  .grid.lb { grid-template-columns: 1fr; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 12px; }
+  .lb-title { font-size: 14px; color: var(--muted); margin-bottom: 6px; display:flex; justify-content:space-between; align-items:center; }
+  .pill { background:#113a4a; color:#74d7f2; padding:3px 8px; border-radius:999px; font-size:11px; }
+  .lb-row { display:flex; justify-content: space-between; padding: 8px 10px; border: 1px solid var(--border); border-radius: 10px; margin: 6px 0; background:#0a1020; }
+  .rank { width: 28px; text-align:center; font-weight:700; color:#a6e3ff; }
+  .player { flex: 1; padding-left: 8px; }
+  .value { min-width: 120px; text-align:right; font-weight:700; }
+  .small { font-size: 12px; color: var(--muted); }
+  .table { margin-top: 14px; }
+  .search { display:flex; gap:8px; margin-bottom:8px; }
+  input[type="text"] { flex:1; padding:8px 10px; border-radius:10px; background:#0a1020; border:1px solid var(--border); color:var(--text); }
+  table { width:100%; border-collapse: collapse; font-size: 12px; }
+  th, td { border-bottom:1px solid var(--border); padding:8px 6px; }
+  th { color:var(--muted); text-align:left; position:sticky; top:0; background:var(--card); }
+  .muted { color:var(--muted); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Match Leaderboards — Lite</h1>
+  <div class="sub">Simple top-3 leaderboards and a compact match table.</div>
+
+  <div class="grid lb">
+    <!-- Leaderboards will render here -->
+    <div id="lbs"></div>
+  </div>
+
+  <div class="card table">
+    <div class="lb-title"><span>Matches</span><span class="small" id="count"></span></div>
+    <div class="search">
+      <input type="text" id="q" placeholder="Search (player, map, mode, rank, kills, etc.)"/>
+    </div>
+    <div style="max-height: 420px; overflow:auto;">
+      <table id="tbl">
+        <thead id="thead"></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+    <div class="small muted" style="margin-top:6px;">Tip: type "rank:1" to show wins only.</div>
+  </div>
+</div>
+
+<script>
+const LBS = {"Most Kills": [{"player": "EkoSama", "value": 39.0}, {"player": "slaponsomepants", "value": 15.0}], "Most Consecutive Kills": [{"player": "EkoSama", "value": 8.0}, {"player": "slaponsomepants", "value": 4.0}], "Most Wins": [{"player": "slaponsomepants", "value": 3}, {"player": "EkoSama", "value": 2}], "Most Hours": [{"player": "EkoSama", "value": 18167.0}, {"player": "slaponsomepants", "value": 16679.0}], "Most Headshots": [{"player": "EkoSama", "value": 16.0}, {"player": "slaponsomepants", "value": 2.0}], "Most Road Kills": [{"player": "EkoSama", "value": 3.0}, {"player": "slaponsomepants", "value": 0}], "Most Revives": [{"player": "slaponsomepants", "value": 7.0}, {"player": "EkoSama", "value": 2.0}], "Most Survived Seconds": [{"player": "EkoSama", "value": 1629.0}, {"player": "slaponsomepants", "value": 1422.0}]};
+const ROWS = [{"time": "2025-08-26T17:52:01Z", "player": "EkoSama", "map": "Kiki_Main", "mode": "squad", "rank": 2, "kills": 2.0, "damage": 676.37274, "survived_seconds": 1629}, {"time": "2025-08-26T17:23:27Z", "player": "EkoSama", "map": "DihorOtok_Main", "mode": "squad", "rank": 7, "kills": 1.0, "damage": 100.0, "survived_seconds": 1293}, {"time": "2025-08-26T13:57:56Z", "player": "EkoSama", "map": "Baltic_Main", "mode": "squad", "rank": 17, "kills": NaN, "damage": 103.0, "survived_seconds": 635}, {"time": "2025-08-26T06:35:42Z", "player": "EkoSama", "map": "DihorOtok_Main", "mode": "ibr", "rank": 3, "kills": NaN, "damage": NaN, "survived_seconds": 373}, {"time": "2025-08-26T06:23:04Z", "player": "EkoSama", "map": "DihorOtok_Main", "mode": "ibr", "rank": 2, "kills": NaN, "damage": 342.18497, "survived_seconds": 494}, {"time": "2025-08-26T05:47:35Z", "player": "EkoSama", "map": "DihorOtok_Main", "mode": "squad", "rank": 1, "kills": 4.0, "damage": 252.93152, "survived_seconds": 1506}, {"time": "2025-08-26T05:27:40Z", "player": "EkoSama", "map": "Baltic_Main", "mode": "squad", "rank": 18, "kills": 2.0, "damage": 432.7279, "survived_seconds": 757}, {"time": "2025-08-26T04:22:04Z", "player": "EkoSama", "map": "Baltic_Main", "mode": "squad", "rank": 4, "kills": 6.0, "damage": 1050.7607, "survived_seconds": 1314}, {"time": "2025-08-26T03:52:13Z", "player": "EkoSama", "map": "Baltic_Main", "mode": "squad", "rank": 1, "kills": 8.0, "damage": 726.87854, "survived_seconds": 1433}, {"time": "2025-08-26T01:54:33Z", "player": "EkoSama", "map": "DihorOtok_Main", "mode": "squad", "rank": 19, "kills": 1.0, "damage": 158.346, "survived_seconds": 365}, {"time": "2025-08-26T01:43:32Z", "player": "EkoSama", "map": "DihorOtok_Main", "mode": "squad", "rank": 20, "kills": NaN, "damage": 93.0, "survived_seconds": 503}, {"time": "2025-08-26T01:24:06Z", "player": "EkoSama", "map": "Chimera_Main", "mode": "squad", "rank": 9, "kills": NaN, "damage": 116.70528, "survived_seconds": 984}, {"time": "2025-08-26T01:12:50Z", "player": "EkoSama", "map": "Baltic_Main", "mode": "squad", "rank": 23, "kills": 1.0, "damage": 234.96686, "survived_seconds": 328}, {"time": "2025-08-26T01:03:09Z", "player": "EkoSama", "map": "Kiki_Main", "mode": "squad", "rank": 24, "kills": 2.0, "damage": 211.125, "survived_seconds": 475}, {"time": "2025-08-26T00:32:15Z", "player": "EkoSama", "map": "Kiki_Main", "mode": "squad", "rank": 3, "kills": 3.0, "damage": 424.7203, "survived_seconds": 1293}, {"time": "2025-08-26T00:04:46Z", "player": "EkoSama", "map": "DihorOtok_Main", "mode": "squad", "rank": 3, "kills": 8.0, "damage": 826.0318, "survived_seconds": 1520}, {"time": "2025-08-25T23:44:01Z", "player": "EkoSama", "map": "Baltic_Main", "mode": "squad", "rank": 21, "kills": NaN, "damage": 76.498886, "survived_seconds": 436}, {"time": "2025-08-25T23:16:41Z", "player": "EkoSama", "map": "DihorOtok_Main", "mode": "squad", "rank": 8, "kills": NaN, "damage": NaN, "survived_seconds": 1209}, {"time": "2025-08-25T22:47:44Z", "player": "EkoSama", "map": "DihorOtok_Main", "mode": "squad", "rank": 4, "kills": 1.0, "damage": 273.58386, "survived_seconds": 1288}, {"time": "2025-08-25T22:36:15Z", "player": "EkoSama", "map": "Baltic_Main", "mode": "squad", "rank": 25, "kills": NaN, "damage": 136.28279, "survived_seconds": 332}, {"time": "2025-08-26T02:57:23Z", "player": "slaponsomepants", "map": "Baltic_Main", "mode": "squad", "rank": 1, "kills": 3.0, "damage": 210.28865, "survived_seconds": 838}, {"time": "2025-08-26T02:34:44Z", "player": "slaponsomepants", "map": "Baltic_Main", "mode": "squad", "rank": 9, "kills": 1.0, "damage": 155.53961, "survived_seconds": 929}, {"time": "2025-08-26T02:04:05Z", "player": "slaponsomepants", "map": "Kiki_Main", "mode": "squad", "rank": 1, "kills": 4.0, "damage": 458.40622, "survived_seconds": 1293}, {"time": "2025-08-26T01:37:28Z", "player": "slaponsomepants", "map": "DihorOtok_Main", "mode": "squad", "rank": 2, "kills": NaN, "damage": 42.75, "survived_seconds": 1422}, {"time": "2025-08-26T01:31:38Z", "player": "slaponsomepants", "map": "Tiger_Main", "mode": "squad", "rank": 24, "kills": 1.0, "damage": 100.0, "survived_seconds": 242}, {"time": "2025-08-26T01:04:43Z", "player": "slaponsomepants", "map": "Kiki_Main", "mode": "squad", "rank": 6, "kills": NaN, "damage": NaN, "survived_seconds": 1328}, {"time": "2025-08-26T00:34:37Z", "player": "slaponsomepants", "map": "Tiger_Main", "mode": "squad", "rank": 1, "kills": 2.0, "damage": 343.8938, "survived_seconds": 1210}, {"time": "2025-08-26T00:10:50Z", "player": "slaponsomepants", "map": "Baltic_Main", "mode": "squad", "rank": 8, "kills": NaN, "damage": 35.080074, "survived_seconds": 1301}, {"time": "2025-08-25T23:37:04Z", "player": "slaponsomepants", "map": "DihorOtok_Main", "mode": "squad", "rank": 2, "kills": NaN, "damage": NaN, "survived_seconds": 1318}, {"time": "2025-08-25T23:28:47Z", "player": "slaponsomepants", "map": "Baltic_Main", "mode": "squad", "rank": 25, "kills": NaN, "damage": 21.40673, "survived_seconds": 328}, {"time": "2025-08-25T23:07:03Z", "player": "slaponsomepants", "map": "Baltic_Main", "mode": "squad", "rank": 4, "kills": 1.0, "damage": 135.73558, "survived_seconds": 813}, {"time": "2025-08-25T23:01:20Z", "player": "slaponsomepants", "map": "DihorOtok_Main", "mode": "squad", "rank": 26, "kills": NaN, "damage": 11.070001, "survived_seconds": 141}, {"time": "2025-08-25T22:46:16Z", "player": "slaponsomepants", "map": "Baltic_Main", "mode": "squad", "rank": 15, "kills": NaN, "damage": 6.4800005, "survived_seconds": 89}, {"time": "2025-08-25T22:26:15Z", "player": "slaponsomepants", "map": "DihorOtok_Main", "mode": "squad", "rank": 11, "kills": 2.0, "damage": 138.66495, "survived_seconds": 617}, {"time": "2025-08-25T22:18:01Z", "player": "slaponsomepants", "map": "DihorOtok_Main", "mode": "squad", "rank": 23, "kills": NaN, "damage": NaN, "survived_seconds": 340}, {"time": "2025-08-25T21:53:57Z", "player": "slaponsomepants", "map": "Tiger_Main", "mode": "squad", "rank": 6, "kills": NaN, "damage": 100.0, "survived_seconds": 1096}, {"time": "2025-08-25T03:32:02Z", "player": "slaponsomepants", "map": "Tiger_Main", "mode": "squad", "rank": 9, "kills": NaN, "damage": 17.667902, "survived_seconds": 1259}, {"time": "2025-08-25T03:25:06Z", "player": "slaponsomepants", "map": "DihorOtok_Main", "mode": "squad", "rank": 25, "kills": NaN, "damage": 39.6, "survived_seconds": 276}, {"time": "2025-08-25T02:59:40Z", "player": "slaponsomepants", "map": "Kiki_Main", "mode": "squad", "rank": 3, "kills": 1.0, "damage": 217.75, "survived_seconds": 1351}, {"time": "2025-08-25T02:48:37Z", "player": "slaponsomepants", "map": "DihorOtok_Main", "mode": "squad", "rank": 19, "kills": NaN, "damage": 74.4, "survived_seconds": 488}];
+
+// Render leaderboards
+function humanize(title, val) {
+  if (title === "Most Hours") return (val/3600).toFixed(1) + " hrs";
+  if (title === "Most Survived Seconds") return (val/60).toFixed(1) + " min (best match)";
+  if (title === "Most Consecutive Kills") return val.toFixed(0) + " in a match";
+  return Number(val).toFixed(0);
+}
+
+function renderLBs() {
+  const host = document.getElementById('lbs');
+  host.innerHTML = Object.entries(LBS).map(([title, items]) => {
+    if (!items || !items.length) return '';
+    const rows = items.map((it, i) => `
+      <div class="lb-row">
+        <div class="rank">${i+1}</div>
+        <div class="player">${it.player || '-'}</div>
+        <div class="value">${humanize(title, it.value)}</div>
+      </div>
+    `).join('');
+    return `
+      <div class="card">
+        <div class="lb-title"><span>${title}</span><span class="pill">Top 3</span></div>
+        ${rows}
+      </div>
+    `;
+  }).join('');
+}
+
+// Render table
+const COLS = Object.keys(ROWS[0] || {
+  time:null, player:null, map:null, mode:null, rank:null, kills:null, damage:null, survived_seconds:null
+});
+
+function renderTable(rows) {
+  document.getElementById('count').textContent = rows.length + " rows";
+  const thead = document.getElementById('thead');
+  const tbody = document.getElementById('tbody');
+  thead.innerHTML = '<tr>' + COLS.map(c => `<th>${c}</th>`).join('') + '</tr>';
+  tbody.innerHTML = rows.map(r => `<tr>` + COLS.map(c => `<td>${formatCell(c, r[c])}</td>`).join('') + `</tr>`).join('');
+}
+
+function formatCell(col, val) {
+  if (val === null || val === undefined) return '';
+  if (col === 'survived_seconds') return (Number(val)/60).toFixed(1) + ' min';
+  if (col === 'time') return new Date(val).toLocaleString();
+  return val;
+}
+
+// Search
+function applySearch() {
+  const q = document.getElementById('q').value.trim().toLowerCase();
+  let rows = ROWS.slice();
+  if (q) {
+    const parts = q.split(' ').filter(Boolean);
+    rows = rows.filter(r => parts.every(p => matchToken(r, p)));
+  }
+  renderTable(rows);
+}
+
+function matchToken(row, token) {
+  // Support key:value like rank:1
+  if (token.includes(':')) {
+    const [k, v] = token.split(':', 2);
+    return (row[k] + '').toLowerCase().includes((v||'').toLowerCase());
+  }
+  // Free text
+  return Object.values(row).some(v => (v + '').toLowerCase().includes(token));
+}
+
+document.getElementById('q').addEventListener('input', applySearch);
+
+// Init
+renderLBs();
+renderTable(ROWS);
+</script>
+</body>
+</html>
