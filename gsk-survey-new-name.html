@@ -3,18 +3,12 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>GSK Survey Dashboard</title>
+  <title>GSK Survey Dashboard — Donut (Fixed)</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <style>
     :root{
-      --bg:#0f1115;
-      --card:#171a21;
-      --line:#2a2f3a;
-      --text:#e5e7eb;
-      --muted:#9aa3b2;
-      --accent:#ef4444;
-      --accent-600:#dc2626;
+      --bg:#0f1115; --card:#171a21; --line:#2a2f3a; --text:#e5e7eb; --muted:#9aa3b2; --accent:#ef4444; --accent-600:#dc2626;
     }
     html,body{height:100%}
     body{ background: var(--bg); color: var(--text); font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial; }
@@ -23,6 +17,9 @@
     .btn:hover{ background: var(--accent-600); }
     .muted{ color: var(--muted) }
     th{ position: sticky; top:0; background: #1b1f27; }
+    /* KEY FIX: constrain chart container height and prevent canvas expansion loops */
+    #chartWrap{ position: relative; height: 340px; width: 100%; }
+    #chartWrap canvas{ max-width: 100%; max-height: 100%; }
   </style>
 </head>
 <body>
@@ -30,7 +27,7 @@
     <header class="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
       <div>
         <h1 class="text-2xl font-semibold tracking-tight">GSK Survey Dashboard</h1>
-        <p class="text-sm muted">Neutral theme, loads data automatically.</p>
+        <p class="text-sm muted">Neutral theme, auto-loaded data. Donut chart with fixed container.</p>
       </div>
       <div class="flex items-center gap-2">
         <button id="exportAggBtn" class="btn">Export CSV</button>
@@ -53,7 +50,7 @@
       </div>
     </section>
 
-    <!-- Chart + Filters -->
+    <!-- Donut + Filters -->
     <section class="grid grid-cols-1 lg:grid-cols-3 gap-4">
       <div class="card p-4 lg:col-span-2">
         <div class="flex items-center justify-between mb-3">
@@ -64,7 +61,7 @@
             <span id="topNLabel">10</span>
           </div>
         </div>
-        <canvas id="barChart" height="160" role="img" aria-label="Bar chart of top suggestions"></canvas>
+        <div id="chartWrap"><canvas id="donutChart" role="img" aria-label="Doughnut chart of top suggestions"></canvas></div>
       </div>
       <div class="card p-4 space-y-3">
         <h2 class="text-sm font-semibold">Filters</h2>
@@ -302,17 +299,20 @@
       document.getElementById('topNLabel').textContent = topN;
       const labels = grouped.slice(0, topN).map(g => g.label);
       const data = grouped.slice(0, topN).map(g => g.count);
-      const ctx = document.getElementById('barChart');
+      const ctx = document.getElementById('donutChart');
       if(chartInstance){ chartInstance.destroy(); }
       chartInstance = new Chart(ctx, {
-        type: 'bar',
+        type: 'doughnut',
         data: { labels, datasets: [{ label: 'Votes', data }] },
         options: {
-          responsive: true, maintainAspectRatio: false,
-          plugins: { legend: { display:false } },
-          scales: {
-            x: { ticks: { color: '#c7cdd6' }, grid: { display:false } },
-            y: { ticks: { color: '#c7cdd6' }, grid: { color: 'rgba(154,163,178,.18)' }, beginAtZero:true, precision:0 }
+          responsive: true,
+          maintainAspectRatio: false,   // respect the fixed #chartWrap height
+          cutout: '60%',
+          animation: { duration: 300 },
+          resizeDelay: 120,             // throttle resize to avoid loops
+          plugins: {
+            legend: { position: 'bottom', labels: { color: '#c7cdd6', boxWidth: 14 } },
+            tooltip: { enabled: true }
           }
         }
       });
@@ -369,7 +369,6 @@
       }catch(err){
         console.error(err);
         setStatus('Could not load the sheet. Check sharing settings.', false);
-        // Minimal sample fallback
         rawRows = [
           { timestamp: new Date('2025-08-26T12:57:37'), suggestion: 'Ghost Siege Killers' },
           { timestamp: new Date('2025-08-26T12:59:15'), suggestion: 'Ghost Siege Killas' }
